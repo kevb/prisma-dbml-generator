@@ -31,13 +31,18 @@ export function generateRelations(
         const relationFormName =
           mapToDbSchema && model.dbName ? model.dbName : model.name;
 
+        const toModel = getModelByType(models, relationTo);
         const relationToName = mapToDbSchema
-          ? getModelByType(models, relationTo)?.dbName || relationTo
+          ? toModel?.dbName || relationTo
           : relationTo;
 
-        const ref = `Ref: ${relationFormName}.${combineKeys(
+        // Add schema prefixes if they exist
+        const fromSchemaPrefix = model.schema ? `${model.schema}.` : '';
+        const toSchemaPrefix = toModel?.schema ? `${toModel.schema}.` : '';
+
+        const ref = `Ref: ${fromSchemaPrefix}${relationFormName}.${combineKeys(
           field.relationFromFields!,
-        )} ${relationOperator} ${relationToName}.${combineKeys(
+        )} ${relationOperator} ${toSchemaPrefix}${relationToName}.${combineKeys(
           field.relationToFields!!,
         )}`;
 

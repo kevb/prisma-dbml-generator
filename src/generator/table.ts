@@ -7,26 +7,55 @@ export function generateTables(
   mapToDbSchema: boolean = false,
   includeRelationFields: boolean = true,
 ): string[] {
-  return models.map((model) => {
-    let modelName = model.name;
-
-    if (mapToDbSchema && model.dbName) {
-      modelName = model.dbName;
+  // Group models by schema
+  const modelsBySchema: { [schema: string]: DMMF.Model[] } = {};
+  models.forEach((model) => {
+    const schema = model.schema || 'public';
+    if (!modelsBySchema[schema]) {
+      modelsBySchema[schema] = [];
     }
-
-    return (
-      `${DBMLKeywords.Table} ${modelName} {\n` +
-      generateFields(
-        model.fields,
-        models,
-        mapToDbSchema,
-        includeRelationFields,
-      ) +
-      generateTableIndexes(model) +
-      generateTableDocumentation(model) +
-      '\n}'
-    );
+    modelsBySchema[schema].push(model);
   });
+
+  // Generate tables grouped by schema
+  const result: string[] = [];
+  Object.entries(modelsBySchema).forEach(([schema, schemaModels]) => {
+    result.push(`// Schema: ${schema}`);
+    schemaModels.forEach((model) => {
+      result.push(generateTableDefinition(model, models, mapToDbSchema, includeRelationFields));
+    });
+  });
+
+  return result;
+}
+
+function generateTableDefinition(
+  model: DMMF.Model,
+  models: DMMF.Model[],
+  mapToDbSchema: boolean = false,
+  includeRelationFields: boolean = true,
+): string {
+  let modelName = model.name;
+
+  if (mapToDbSchema && model.dbName) {
+    modelName = model.dbName;
+  }
+
+  // Add schema prefix if it exists
+  const schemaPrefix = model.schema ? `${model.schema}.` : '';
+
+  return (
+    `${DBMLKeywords.Table} ${schemaPrefix}${modelName} {\n` +
+    generateFields(
+      model.fields,
+      models,
+      mapToDbSchema,
+      includeRelationFields,
+    ) +
+    generateTableIndexes(model) +
+    generateTableDocumentation(model) +
+    '\n}'
+  );
 }
 
 const generateTableIndexes = (model: DMMF.Model): string => {

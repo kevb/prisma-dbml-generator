@@ -31,8 +31,15 @@ function generateTables(
   // If its a manyMany, generate the join table
   // Else, it's a oneMany: ignore it and continue
   if (manySecond) {
+    // Get schemas from the related models
+    const firstModel = getModelByType(models, manyFirst.type);
+    const secondModel = getModelByType(models, manySecond.type);
+    
+    // Determine the schema for the join table - use first model's schema or default to public
+    const schemaPrefix = firstModel?.schema ? `${firstModel.schema}.` : '';
+    
     manyToManyTables.push(
-      `Table ${manyFirst?.relationName} {\n` +
+      `Table ${schemaPrefix}${manyFirst?.relationName} {\n` +
         `${generateJoinFields(
           [manyFirst, manySecond],
           models,
@@ -67,14 +74,18 @@ function joinField(
   models: DMMF.Model[],
   mapToDbSchema: boolean = false,
 ): string {
+  const model = getModelByType(models, field.type);
   const fieldName = mapToDbSchema
-    ? getModelByType(models, field.type)?.dbName || field.type
+    ? model?.dbName || field.type
     : field.type;
+  
+  // Add schema prefix if it exists
+  const schemaPrefix = model?.schema ? `${model.schema}.` : '';
 
   return `  ${field.name.toLowerCase()}Id ${getJoinIdType(
     field,
     models,
-  )} [ref: > ${fieldName}.${field.relationToFields![0]}]`;
+  )} [ref: > ${schemaPrefix}${fieldName}.${field.relationToFields![0]}]`;
 }
 
 function getJoinIdType(joinField: DMMF.Field, models: DMMF.Model[]): string {
